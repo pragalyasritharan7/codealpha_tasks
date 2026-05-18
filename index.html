@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Lumina — Visual Gallery</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Outfit:wght@200;300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:      #060810;
+      --glass:   rgba(255,255,255,0.04);
+      --border:  rgba(255,255,255,0.07);
+      --gold:    #e8c97a;
+      --gold2:   #f5e0a0;
+      --teal:    #4fd1c5;
+      --text:    #eeeae0;
+      --muted:   #5a5a6a;
+      --ease:    cubic-bezier(0.4,0,0.2,1);
+      --spring:  cubic-bezier(0.34,1.56,0.64,1);
+    }
+    html { scroll-behavior: smooth; }
+    body { background: var(--bg); color: var(--text); font-family: 'Outfit', sans-serif; font-weight: 300; overflow-x: hidden; cursor: none; }
+
+    /* ── CURSOR ── */
+    #cur-d { width:8px;height:8px;background:var(--gold);border-radius:50%;position:fixed;top:0;left:0;pointer-events:none;z-index:9999;transform:translate(-50%,-50%);transition:transform .1s var(--ease),background .2s; }
+    #cur-r { width:36px;height:36px;border:1.5px solid rgba(232,201,122,.5);border-radius:50%;position:fixed;top:0;left:0;pointer-events:none;z-index:9998;transform:translate(-50%,-50%);transition:transform .18s var(--ease),width .3s var(--spring),height .3s var(--spring),border-color .3s; }
+    body.hov #cur-d { transform:translate(-50%,-50%) scale(2.5);background:var(--teal); }
+    body.hov #cur-r { width:56px;height:56px;border-color:rgba(79,209,197,.4); }
+    body.clk #cur-d { transform:translate(-50%,-50%) scale(.5); }
+    @media(pointer:coarse){body{cursor:auto}#cur-d,#cur-r{display:none}}
+
+    /* ── LOADER ── */
+    #loader { position:fixed;inset:0;background:var(--bg);z-index:9000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2rem;transition:opacity .7s,visibility .7s; }
+    #loader.gone { opacity:0;visibility:hidden;pointer-events:none; }
+    .ld-logo { font-family:'Playfair Display',serif;font-size:3rem;font-weight:900;background:linear-gradient(135deg,var(--gold),var(--gold2),var(--teal));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text; }
+    .ld-track { width:200px;height:2px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden; }
+    .ld-bar { height:100%;background:linear-gradient(90deg,var(--gold),var(--teal));width:0;border-radius:2px;transition:width .05s linear; }
+    .ld-pct { font-size:.7rem;letter-spacing:.15em;color:var(--muted); }
+
+    /* ── BACKGROUND CANVAS ── */
+    #bg-canvas { position:fixed;inset:0;z-index:0;pointer-events:none; }
+    .grain { position:fixed;inset:-200%;width:400%;height:400%;opacity:.22;pointer-events:none;z-index:1;
+      background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+      animation:grn .5s steps(2) infinite; }
+    @keyframes grn { 0%{transform:translate(0,0)} 25%{transform:translate(-5%,-5%)} 50%{transform:translate(5%,0)} 75%{transform:translate(-5%,5%)} }
+
+    /* ── PAGE WRAP ── */
+    .page { position:relative;z-index:2; }
+
+    /* ── HERO ── */
+    .hero { min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:6rem 2rem 4rem;position:relative; }
+    .hero-eye { font-size:.65rem;letter-spacing:.3em;text-transform:uppercase;color:var(--gold);margin-bottom:1.5rem;opacity:0;animation:fUp .8s .2s var(--ease) forwards; }
+    .hero-h1 { font-family:'Playfair Display',serif;font-size:clamp(3.5rem,10vw,9rem);font-weight:900;line-height:.9;letter-spacing:-.04em;margin-bottom:.2em;opacity:0;animation:fUp .9s .35s var(--ease) forwards; }
+    .hero-h1 .l1 { display:block;background:linear-gradient(135deg,var(--text) 0%,rgba(238,234,224,.6) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text; }
+    .hero-h1 .l2 { display:block;font-style:italic;background:linear-gradient(135deg,var(--gold),var(--gold2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text; }
+    .hero-sub { font-size:clamp(.85rem,2vw,1rem);color:var(--muted);letter-spacing:.06em;max-width:400px;margin:2rem auto 3rem;line-height:1.8;opacity:0;animation:fUp .9s .5s var(--ease) forwards; }
+    .hero-cta { display:inline-flex;align-items:center;gap:.75rem;padding:.85rem 2rem;background:transparent;border:1px solid rgba(232,201,122,.35);border-radius:4rem;color:var(--gold);font-family:'Outfit',sans-serif;font-size:.8rem;letter-spacing:.12em;text-transform:uppercase;cursor:none;text-decoration:none;transition:all .35s var(--ease);opacity:0;animation:fUp .9s .65s var(--ease) forwards; }
+    .hero-cta:hover { background:rgba(232,201,122,.1);border-color:var(--gold);transform:translateY(-2px);box-shadow:0 12px 40px rgba(232,201,122,.15); }
+    .hero-cta svg { width:16px;height:16px;stroke:currentColor;fill:none;transition:transform .3s; }
+    .hero-cta:hover svg { transform:translateY(4px); }
+    .hero-stats { position:absolute;bottom:3.5rem;left:50%;transform:translateX(-50%);display:flex;gap:3rem;opacity:0;animation:fUp .9s .8s var(--ease) forwards; }
+    .stat-n { font-family:'Playfair Display',serif;font-size:2rem;font-weight:700;color:var(--gold);line-height:1; }
+    .stat-l { font-size:.62rem;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-top:4px; }
+    .stat-sep { width:1px;background:var(--border);align-self:stretch; }
+    @keyframes fUp { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:translateY(0)} }
+
+    /* ── GALLERY SECTION ── */
+    .g-section { padding:0 3rem 6rem; }
+    .g-head { display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:2.5rem;flex-wrap:wrap;gap:1rem; }
+    .g-title { font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:700; }
+    .g-title em { color:var(--gold);font-style:italic; }
+    .count-pill { font-size:.7rem;letter-spacing:.1em;color:var(--muted);padding:.35rem .9rem;border:1px solid var(--border);border-radius:2rem; }
+    .count-pill b { color:var(--gold);font-weight:500; }
+
+    /* filters */
+    .filters { display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:2.5rem; }
+    .fb { position:relative;background:var(--glass);border:1px solid var(--border);color:var(--muted);font-family:'Outfit',sans-serif;font-size:.76rem;letter-spacing:.08em;padding:.5rem 1.25rem;border-radius:3rem;cursor:none;transition:all .3s var(--ease);overflow:hidden;backdrop-filter:blur(6px); }
+    .fb::before { content:'';position:absolute;inset:0;background:linear-gradient(135deg,var(--gold),var(--teal));opacity:0;transition:opacity .3s;z-index:0; }
+    .fb span { position:relative;z-index:1; }
+    .fb:hover { border-color:rgba(232,201,122,.4);color:var(--gold);transform:translateY(-1px); }
+    .fb.on { border-color:transparent;color:#060810;font-weight:500; }
+    .fb.on::before { opacity:1; }
+
+    /* masonry grid */
+    .masonry { columns:4 200px;column-gap:16px; }
+    .card { break-inside:avoid;margin-bottom:16px;position:relative;border-radius:12px;overflow:hidden;cursor:none;transform-style:preserve-3d;transition:box-shadow .4s var(--ease);will-change:transform;animation:cIn .6s var(--ease) both; }
+    @keyframes cIn { from{opacity:0;transform:perspective(800px) translateY(28px) rotateX(8deg)} to{opacity:1;transform:perspective(800px) translateY(0) rotateX(0)} }
+    .card img { width:100%;display:block;transition:transform .5s var(--ease),filter .5s var(--ease);filter:brightness(.85) saturate(.8); }
+    .card:hover img { transform:scale(1.06);filter:brightness(1) saturate(1.15); }
+    .card:hover { box-shadow:0 25px 60px rgba(0,0,0,.6),0 0 0 1px rgba(232,201,122,.15); }
+
+    /* overlay */
+    .ov { position:absolute;inset:0;background:linear-gradient(to top,rgba(6,8,16,.88) 0%,rgba(6,8,16,.25) 40%,transparent 65%);opacity:0;transition:opacity .4s var(--ease);display:flex;flex-direction:column;justify-content:flex-end;padding:1.1rem; }
+    .card:hover .ov { opacity:1; }
+    .ov-t { font-family:'Playfair Display',serif;font-size:1rem;font-weight:700;color:#fff;transform:translateY(8px);transition:transform .4s var(--ease);line-height:1.2; }
+    .card:hover .ov-t { transform:translateY(0); }
+    .ov-m { font-size:.62rem;letter-spacing:.15em;text-transform:uppercase;color:var(--gold);margin-top:4px;transform:translateY(8px);transition:transform .45s .04s var(--ease);opacity:.85; }
+    .card:hover .ov-m { transform:translateY(0); }
+
+    /* chip & icon */
+    .chip { position:absolute;top:.75rem;left:.75rem;font-size:.58rem;letter-spacing:.12em;text-transform:uppercase;padding:.28rem .7rem;background:rgba(6,8,16,.55);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.1);border-radius:2rem;color:var(--gold2);opacity:0;transform:translateY(-4px);transition:all .35s .05s var(--spring); }
+    .card:hover .chip { opacity:1;transform:translateY(0); }
+    .exp { position:absolute;top:.75rem;right:.75rem;width:34px;height:34px;background:rgba(6,8,16,.55);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.15);border-radius:50%;display:flex;align-items:center;justify-content:center;opacity:0;transform:scale(.6);transition:all .35s var(--spring); }
+    .card:hover .exp { opacity:1;transform:scale(1); }
+    .exp svg { width:13px;height:13px;stroke:#fff;fill:none; }
+    .shine { position:absolute;inset:0;background:linear-gradient(105deg,transparent 30%,rgba(255,255,255,.06) 50%,transparent 70%);pointer-events:none;opacity:0;transition:opacity .3s; }
+    .card:hover .shine { opacity:1; }
+
+    /* hidden */
+    .card.off { display:none; }
+
+    /* empty */
+    .empty { display:none;flex-direction:column;align-items:center;padding:6rem 2rem;gap:1rem; }
+    .empty.show { display:flex; }
+    .empty svg { width:48px;height:48px;stroke:var(--muted);fill:none; }
+    .empty p { font-size:.85rem;color:var(--muted);letter-spacing:.06em; }
+
+    /* ── LIGHTBOX ── */
+    .lb { position:fixed;inset:0;z-index:5000;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .4s var(--ease); }
+    .lb.open { opacity:1;pointer-events:all; }
+    .lb-bd { position:absolute;inset:0;background:rgba(4,5,12,.93);backdrop-filter:blur(20px) saturate(.4); }
+    .lb-box { position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;max-width:min(90vw,1000px);transform:scale(.88) translateY(20px);transition:transform .45s var(--spring),opacity .4s;opacity:0; }
+    .lb.open .lb-box { transform:scale(1) translateY(0);opacity:1; }
+    .lb-frame { position:relative;border-radius:14px;overflow:hidden;box-shadow:0 0 0 1px rgba(255,255,255,.08),0 40px 100px rgba(0,0,0,.8),0 0 80px rgba(232,201,122,.07);max-height:70vh; }
+    .lb-frame img { display:block;max-width:100%;max-height:70vh;object-fit:contain;transition:opacity .22s var(--ease),transform .22s var(--ease); }
+    .lb-frame img.sw { opacity:0;transform:scale(.97); }
+    .lb-glow { position:absolute;inset:-30px;background:radial-gradient(ellipse at 50% 110%,rgba(232,201,122,.12),transparent 70%);pointer-events:none;z-index:-1; }
+    .lb-info { margin-top:1.4rem;text-align:center; }
+    .lb-ttl { font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:700; }
+    .lb-cat { font-size:.66rem;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);margin-top:6px; }
+    .lb-pos { font-size:.65rem;letter-spacing:.1em;color:var(--muted);margin-top:8px; }
+    .lb-dots { display:flex;gap:6px;margin-top:1rem;flex-wrap:wrap;justify-content:center;max-width:280px; }
+    .lb-dot { width:6px;height:6px;border-radius:50%;background:var(--border);transition:background .3s,transform .3s;cursor:none; }
+    .lb-dot.a { background:var(--gold);transform:scale(1.5); }
+    .lb-nav { position:fixed;top:50%;transform:translateY(-50%);width:52px;height:52px;border-radius:50%;background:rgba(14,16,32,.7);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;cursor:none;transition:all .3s var(--ease);z-index:5010;color:var(--text); }
+    .lb-nav:hover { background:rgba(232,201,122,.15);border-color:var(--gold);color:var(--gold);transform:translateY(-50%) scale(1.06); }
+    .lb-nav svg { width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2; }
+    #lbPrev { left:2rem; } #lbNext { right:2rem; }
+    .lb-x { position:fixed;top:1.5rem;right:1.5rem;width:46px;height:46px;border-radius:50%;background:rgba(14,16,32,.7);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;cursor:none;transition:all .3s var(--ease);z-index:5010;color:var(--text); }
+    .lb-x:hover { background:#c0392b;border-color:#c0392b;transform:rotate(90deg); }
+    .lb-x svg { width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:2.2; }
+    .lb-hint { position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);font-size:.62rem;letter-spacing:.12em;color:rgba(255,255,255,.2);pointer-events:none;z-index:5010;white-space:nowrap; }
+
+    /* ── FOOTER ── */
+    footer { border-top:1px solid var(--border);padding:2.5rem 3rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;position:relative;z-index:2; }
+    .f-logo { font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:900;background:linear-gradient(135deg,var(--gold),var(--gold2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text; }
+    .f-txt { font-size:.7rem;color:var(--muted);letter-spacing:.08em;text-align:right;line-height:1.8; }
+
+    /* ── RESPONSIVE ── */
+    @media(max-width:1024px){.masonry{columns:3 180px}}
+    @media(max-width:768px){.g-section{padding:0 1.5rem 4rem}footer{padding:2rem 1.5rem}.masonry{columns:2 140px;column-gap:12px}.card{margin-bottom:12px}#lbPrev{left:.5rem}#lbNext{right:.5rem}.lb-nav{width:42px;height:42px}.hero-stats{gap:1.5rem}}
+    @media(max-width:480px){.masonry{columns:2 110px;column-gap:10px}.card{margin-bottom:10px}.lb-dots{display:none}}
+  </style>
+</head>
+<body>
+
+  <div id="cur-d"></div>
+  <div id="cur-r"></div>
+
+  <!-- LOADER -->
+  <div id="loader">
+    <div class="ld-logo">Lumina</div>
+    <div class="ld-track"><div class="ld-bar" id="ldBar"></div></div>
+    <div class="ld-pct" id="ldPct">0%</div>
+  </div>
+
+  <!-- ANIMATED BACKGROUND CANVAS -->
+  <canvas id="bg-canvas"></canvas>
+  <div class="grain"></div>
+
+  <div class="page">
+    <!-- HERO -->
+    <section class="hero">
+      <div class="hero-eye">✦ &nbsp;A Curated Visual Experience&nbsp; ✦</div>
+      <h1 class="hero-h1">
+        <span class="l1">Lumina</span>
+        <span class="l2">Gallery</span>
+      </h1>
+      <p class="hero-sub">Eighteen handpicked photographs across five visual worlds — explore, filter, and immerse.</p>
+      <a class="hero-cta" href="#gallery">
+        <svg viewBox="0 0 24 24"><polyline points="7 13 12 18 17 13"/><polyline points="7 6 12 11 17 6"/></svg>
+        Explore the collection
+      </a>
+      <div class="hero-stats">
+        <div class="stat"><div class="stat-n">18</div><div class="stat-l">Images</div></div>
+        <div class="stat-sep"></div>
+        <div class="stat"><div class="stat-n">5</div><div class="stat-l">Categories</div></div>
+        <div class="stat-sep"></div>
+        <div class="stat"><div class="stat-n">3D</div><div class="stat-l">Tilt FX</div></div>
+      </div>
+    </section>
+
+    <!-- GALLERY -->
+    <section class="g-section" id="gallery">
+      <div class="g-head">
+        <h2 class="g-title">The <em>Collection</em></h2>
+        <div class="count-pill">Showing <b id="cnt">18</b> images</div>
+      </div>
+      <div class="filters">
+        <button class="fb on" data-f="all"><span>All Works</span></button>
+        <button class="fb" data-f="nature"><span>Nature</span></button>
+        <button class="fb" data-f="architecture"><span>Architecture</span></button>
+        <button class="fb" data-f="people"><span>People</span></button>
+        <button class="fb" data-f="abstract"><span>Abstract</span></button>
+        <button class="fb" data-f="cityscape"><span>Cityscape</span></button>
+      </div>
+
+      <div class="masonry" id="grid">
+
+        <!-- NATURE — forests, mountains, oceans, deserts, lakes -->
+        <div class="card" data-f="nature" data-t="Forest Dawn" data-i="0">
+          <img src="https://images.unsplash.com/photo-1448375240586-882707db888b?w=600&q=80" alt="Forest Dawn" loading="lazy"/>
+          <div class="chip">Nature</div>
+          <div class="ov"><div class="ov-t">Forest Dawn</div><div class="ov-m">Nature · Forest</div></div>
+          <div class="exp"><svg viewBox="0 0 24 24" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></div>
+          <div class="shine"></div>
+        </div>
+
+        <!-- ARCHITECTURE — buildings, skyscrapers, bridges -->
+        <div class="card" data-f="architecture" data-t="Glass Towers" data-i="1">
+          <img src="https://images.unsplash.com/photo-1486325212027-8081e485255e?w=600&q=80" alt="Glass Towers" loading="lazy"/>
+          <div class="chip">Architecture</div>
+          <div class="ov"><div class="ov-t">Glass Towers</div><div class="ov-m">Architecture · Skyscrapers</div></div>
+          <div class="exp"><svg viewBox="0 0 24 24" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></div>
+          <div class="shine"></div>
+        </div>
+
+        <!-- PEOPLE — portrait, candid -->
+        <div class="card" data-f="people" data-t="Golden Hour" data-i="2">
+          <img src="https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=600&q=80" alt="Golden Hour" loading="lazy"/>
+          <div class="chip">People</div>
+          <div class="ov"><div class="ov-t">Golden Hour</div><div class="ov-m">People · Portrait</div></div>
+          <div class="exp"><svg viewBox="0 0 24 24" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></div>
+          <div class="shine"></div>
+        </div>
+
+        <!-- ABSTRACT -->
+        <div class="card" data-f="abstract" data-t="Liquid Forms" data-i="3">
+          <img src="https://images.unsplash.com/photo-1541701494587-cb58502866ab?w=600&q=80" alt="Liquid Forms" loading="lazy"/>
+          <div class="chip">Abstract</div>
+          <div class="ov"><div class="ov-t">Liquid Forms</div><div class="ov-m">Abstract · Fluid</div></div>
+          <div class="exp"><svg viewBox="0 0 24 24" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></div>
+          <div class="shine"></div>
+        </div>
+
+        <!-- CITYSCAPE — city skyline, streets at night -->
+        <div class="card" data-f="cityscape" data-t="Neon Streets" data-i="4">
+          <img src="https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=600&q=80" alt="Neon Streets" loading="lazy"/>
+          <div class="chip">Cityscape</div>
+          <div class="ov"><div class="ov-t">Neon Streets</div><div class="ov-m">Cityscape · Night</div></div>
+          <div class="exp"><svg viewBox="0 0 24 24" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></div>
+          <div class="shine"></div>
+        </div>
+
+        <!-- NATURE — lake / mountain reflection -->
+        <div class="card" data-f="nature" data-t="Alpine Mirror" data-i="5">
+          <img src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600&q=80" alt="Alpine Mirror" loading="lazy"/>
+          <div class="chip">Nature</div>
+          <div class="ov"><div class="ov-t">Alpine Mirror</div><div class="ov-m">Nature · Lake</div></div>
+          <div class="exp"><svg viewBox="0 0 24 24" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></div>
+          <div class="shine"></div>
+        </div>
+
+        <!-- ARCHITECTURE — concrete brutalist building -->
+        <div class="card" data-f="architecture" data-t="Brutalist Form" data-i="6">
+          <img src="https://images.unsplash.com/photo-1565117100611-c887db42e001?w=600&q=80" alt="Brutalist Form" loading="lazy"/>
+          <div class="chip">Architecture</div>
+          <div class="ov"><div class="ov-t">Brutalist Form</div><div class="ov-m">Architecture · Concrete</div></div>
+          <div class="exp"><svg viewBox="0 0 24 24" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></div>
+          <div class="shine"></div>
+        </div>
+
+        <!-- ABSTRACT — color paint splash -->
+        <div class="card" data-f="abstract" data-t="Chromatic Drift" data-i="7">
+          <img src="https://images.unsplash.com/photo-1557672172-298e090bd0f1?w=600&q=80" alt="Chromatic Drift" loading="lazy"/>
+          <div class="chip">Abstract</div>
+          <div class="ov"><div class="ov-t">Chromatic Drift</div><div class="ov-m">Abstract · Color</div></div>
+          <div class="exp"><svg viewBox="0 0 24 24" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></div>
+          <div class="shine"></div>
+        </div>
+
+        <!-- PEOPLE — group / crowd -->
+        <div class="card" data-f="people" data-t="Still Moment" data-i="8">
+          <img src="https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=600&q=80" alt="Still Moment" loading="lazy"/>
+          <div class="chip">People</div>
+          <div class="ov"><div class="ov-t">Still Moment</div><div class="ov-m">People · Candid</div></div>
+          <div class="exp"><svg viewBox="0 0 24 24" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></div>
+          <div class="shine"></div>
+        </div>
+
+        <!-- CITYSCAPE — aerial rooftop city -->
+        <div class="card" data-f="cityscape" data-t="Rooftop View" data-i="9">
+          <img src="https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=600&q=80" alt="Rooftop View" loading="lazy"/>
+          <div class="chip">Cityscape</div>
+          <div class="ov"><div class="ov-t">Rooftop View</div><div class="ov-m">Cityscape · Aerial</div></div>
+          <div class="exp"><svg viewBox="0 0 24 24" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></div>
+          <div class="shine"></div>
+        </div>
+
+        <!-- NATURE — desert sunset -->
+        <div class="card" data-f="nature" data-t="Desert Dusk" data-i="10">
+          <img src="https://images.unsplash.com/photo-1509316785289-025f5b846b35?w=600&q=80" alt="Desert Dusk" loading="lazy"/>
+          <div class="chip">Nature</div>
+          <div class="ov"><div class="ov-t">Desert Dusk</div><div class="ov-m">Nature · Desert</div></div>
+          <div class="exp"><svg viewBox="0 0 24 24" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></div>
+          <div class="shine"></div>
+        </div>
+
+        <!-- ABSTRACT — geometric fractal -->
+        <div class="card" data-f="abstract" data-t="Fractal Mind" data-i="11">
+          <img src="https://images.unsplash.com/photo-1518640467707-6811f4a6ab73?w=600&q=80" alt="Fractal Mind" loading="lazy"/>
+          <div class="chip">Abstract</div>
+          <div class="ov"><div class="ov-t">Fractal Mind</div><div class="ov-m">Abstract · Geometric</div></div>
+          <div class="exp"><svg viewBox="0 0 24 24" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></div>
+          <div class="shine"></div>
+        </div>
+
+        <!-- ARCHITECTURE — spiral staircase interior -->
+        <div class="card" data-f="architecture" data-t="Spiral Ascent" data-i="12">
+          <img src="https://images.unsplash.com/photo-1570168007204-dfb528c6958f?w=600&q=80" alt="Spiral Ascent" loading="lazy"/>
+          <div class="chip">Architecture</div>
+          <div class="ov"><div class="ov-t">Spiral Ascent</div><div class="ov-m">Architecture · Interior</div></div>
+          <div class="exp"><svg viewBox="0 0 24 24" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></div>
+          <div class="shine"></div>
+        </div>
+
+        <!-- PEOPLE — street crowd -->
+        <div class="card" data-f="people" data-t="Urban Pulse" data-i="13">
+          <img src="https://images.unsplash.com/photo-1542744095-fcf48d80b0fd?w=600&q=80" alt="Urban Pulse" loading="lazy"/>
+          <div class="chip">People</div>
+          <div class="ov"><div class="ov-t">Urban Pulse</div><div class="ov-m">People · Street</div></div>
+          <div class="exp"><svg viewBox="0 0 24 24" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></div>
+          <div class="shine"></div>
+        </div>
+
+        <!-- CITYSCAPE — bridge at night -->
+        <div class="card" data-f="cityscape" data-t="Midnight Bridge" data-i="14">
+          <img src="https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=600&q=80&fit=crop&crop=bottom" alt="Midnight Bridge" loading="lazy"/>
+          <div class="chip">Cityscape</div>
+          <div class="ov"><div class="ov-t">Midnight Bridge</div><div class="ov-m">Cityscape · Bridge</div></div>
+          <div class="exp"><svg viewBox="0 0 24 24" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></div>
+          <div class="shine"></div>
+        </div>
+
+        <!-- NATURE — ocean waves / coastal -->
+        <div class="card" data-f="nature" data-t="Ocean Mist" data-i="15">
+          <img src="https://images.unsplash.com/photo-1505118380757-91f5f5632de0?w=600&q=80" alt="Ocean Mist" loading="lazy"/>
+          <div class="chip">Nature</div>
+          <div class="ov"><div class="ov-t">Ocean Mist</div><div class="ov-m">Nature · Coastal</div></div>
+          <div class="exp"><svg viewBox="0 0 24 24" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></div>
+          <div class="shine"></div>
+        </div>
+
+        <!-- ABSTRACT — neon light trails -->
+        <div class="card" data-f="abstract" data-t="Void Signal" data-i="16">
+          <img src="https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=600&q=80" alt="Void Signal" loading="lazy"/>
+          <div class="chip">Abstract</div>
+          <div class="ov"><div class="ov-t">Void Signal</div><div class="ov-m">Abstract · Neon</div></div>
+          <div class="exp"><svg viewBox="0 0 24 24" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></div>
+          <div class="shine"></div>
+        </div>
+
+        <!-- ARCHITECTURE — modern steel facade -->
+        <div class="card" data-f="architecture" data-t="Steel & Light" data-i="17">
+          <img src="https://images.unsplash.com/photo-1486325212027-8081e485255e?w=600&q=80&fit=crop&crop=right" alt="Steel and Light" loading="lazy"/>
+          <div class="chip">Architecture</div>
+          <div class="ov"><div class="ov-t">Steel &amp; Light</div><div class="ov-m">Architecture · Modern</div></div>
+          <div class="exp"><svg viewBox="0 0 24 24" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></div>
+          <div class="shine"></div>
+        </div>
+
+      </div><!-- /masonry -->
+
+      <div class="empty" id="empt">
+        <svg viewBox="0 0 24 24" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+        <p>No images in this category.</p>
+      </div>
+    </section>
+
+    <footer>
+      <div class="f-logo">Lumina</div>
+      <div class="f-txt">CodeAlpha Internship · Task 1 — Image Gallery<br>HTML · CSS · JavaScript</div>
+    </footer>
+  </div>
+
+  <!-- LIGHTBOX -->
+  <div class="lb" id="lb">
+    <div class="lb-bd" id="lbBd"></div>
+    <button class="lb-nav" id="lbPrev"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button>
+    <div class="lb-box">
+      <div class="lb-glow"></div>
+      <div class="lb-frame"><img id="lbImg" src="" alt=""/></div>
+      <div class="lb-info">
+        <div class="lb-ttl" id="lbT"></div>
+        <div class="lb-cat" id="lbC"></div>
+        <div class="lb-pos" id="lbP"></div>
+      </div>
+      <div class="lb-dots" id="lbDots"></div>
+    </div>
+    <button class="lb-nav" id="lbNext"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></button>
+    <button class="lb-x" id="lbX"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    <div class="lb-hint">← → arrow keys · ESC to close · swipe on mobile</div>
+  </div>
+
+  <script>
+  (() => {
+    /* ── ANIMATED BACKGROUND ──
+       Three-layer effect:
+       1. Starfield (tiny white particles drifting upward)
+       2. Aurora / nebula blobs (large soft colour masses sweeping slowly)
+       3. Shooting-star streaks (occasional bright lines)
+    */
+    const canvas = document.getElementById('bg-canvas');
+    const ctx = canvas.getContext('2d');
+    let W, H;
+
+    function resize() {
+      W = canvas.width  = window.innerWidth;
+      H = canvas.height = window.innerHeight;
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    /* -- stars -- */
+    const STAR_COUNT = 180;
+    const stars = Array.from({length: STAR_COUNT}, () => ({
+      x: Math.random() * 2000,
+      y: Math.random() * 2000,
+      r: Math.random() * 1.2 + 0.2,
+      speed: Math.random() * 0.12 + 0.03,
+      opacity: Math.random() * 0.6 + 0.2,
+      twinkle: Math.random() * Math.PI * 2
+    }));
+
+    /* -- aurora blobs -- */
+    const BLOB_COUNT = 5;
+    const blobColors = [
+      [26,  58, 108],   // deep navy
+      [61,  32,  96],   // violet
+      [14,  64,  64],   // dark teal
+      [80,  20,  60],   // magenta-dark
+      [10,  40,  80],   // indigo
+    ];
+    const blobs = blobColors.map((rgb, i) => ({
+      x: (i / BLOB_COUNT) * 1.4 - 0.2,  // 0..1 fraction of W
+      y: Math.random() * 0.8,
+      rx: 0.35 + Math.random() * 0.25,
+      ry: 0.28 + Math.random() * 0.18,
+      rgb,
+      phase: Math.random() * Math.PI * 2,
+      speed: 0.0004 + Math.random() * 0.0003,
+      drift: (Math.random() - 0.5) * 0.00015,
+    }));
+
+    /* -- shooting stars -- */
+    const shoots = [];
+    function spawnShoot() {
+      if (Math.random() > 0.004) return;
+      shoots.push({
+        x: Math.random() * W,
+        y: Math.random() * H * 0.5,
+        len: 80 + Math.random() * 140,
+        speed: 8 + Math.random() * 10,
+        angle: Math.PI / 4 + (Math.random() - 0.5) * 0.3,
+        life: 1,
+        decay: 0.025 + Math.random() * 0.02
+      });
+    }
+
+    let t = 0;
+    function draw() {
+      t += 0.005;
+      ctx.clearRect(0, 0, W, H);
+
+      /* aurora layer */
+      blobs.forEach(b => {
+        b.phase += b.speed;
+        b.x += b.drift;
+        if (b.x > 1.3) b.drift = -Math.abs(b.drift);
+        if (b.x < -0.3) b.drift =  Math.abs(b.drift);
+        const cx = b.x * W + Math.sin(b.phase) * 80;
+        const cy = b.y * H + Math.cos(b.phase * 0.7) * 60;
+        const rw = b.rx * W;
+        const rh = b.ry * H;
+        const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(rw, rh));
+        grad.addColorStop(0,   `rgba(${b.rgb[0]},${b.rgb[1]},${b.rgb[2]},0.22)`);
+        grad.addColorStop(0.5, `rgba(${b.rgb[0]},${b.rgb[1]},${b.rgb[2]},0.10)`);
+        grad.addColorStop(1,   `rgba(${b.rgb[0]},${b.rgb[1]},${b.rgb[2]},0)`);
+        ctx.save();
+        ctx.scale(1, rh / rw);
+        ctx.beginPath();
+        ctx.arc(cx, cy * rw / rh, rw, 0, Math.PI * 2);
+        ctx.fillStyle = grad;
+        ctx.fill();
+        ctx.restore();
+      });
+
+      /* star layer */
+      stars.forEach(s => {
+        s.y -= s.speed;
+        s.twinkle += 0.02;
+        if (s.y < -2) { s.y = H + 2; s.x = Math.random() * W; }
+        const alpha = s.opacity * (0.7 + 0.3 * Math.sin(s.twinkle));
+        ctx.beginPath();
+        ctx.arc(s.x % W, s.y, s.r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255,255,240,${alpha})`;
+        ctx.fill();
+      });
+
+      /* shooting stars */
+      spawnShoot();
+      for (let i = shoots.length - 1; i >= 0; i--) {
+        const s = shoots[i];
+        s.x += Math.cos(s.angle) * s.speed;
+        s.y += Math.sin(s.angle) * s.speed;
+        s.life -= s.decay;
+        if (s.life <= 0) { shoots.splice(i, 1); continue; }
+        const tx = s.x - Math.cos(s.angle) * s.len;
+        const ty = s.y - Math.sin(s.angle) * s.len;
+        const g = ctx.createLinearGradient(tx, ty, s.x, s.y);
+        g.addColorStop(0, `rgba(255,255,220,0)`);
+        g.addColorStop(1, `rgba(255,245,180,${s.life * 0.9})`);
+        ctx.beginPath();
+        ctx.moveTo(tx, ty);
+        ctx.lineTo(s.x, s.y);
+        ctx.strokeStyle = g;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      }
+
+      requestAnimationFrame(draw);
+    }
+    draw();
+
+    /* ── LOADER ── */
+    const ldBar = document.getElementById('ldBar');
+    const ldPct = document.getElementById('ldPct');
+    const loaderEl = document.getElementById('loader');
+    let p = 0;
+    const iv = setInterval(() => {
+      p += Math.random() * 16 + 6;
+      if (p >= 100) { p = 100; clearInterval(iv); setTimeout(() => loaderEl.classList.add('gone'), 280); }
+      ldBar.style.width = p + '%';
+      ldPct.textContent = Math.floor(p) + '%';
+    }, 75);
+
+    /* ── CURSOR ── */
+    const cd = document.getElementById('cur-d'), cr = document.getElementById('cur-r');
+    let mx=0,my=0,rx=0,ry=0;
+    document.addEventListener('mousemove', e => { mx=e.clientX; my=e.clientY; cd.style.left=mx+'px'; cd.style.top=my+'px'; });
+    document.addEventListener('mousedown', () => document.body.classList.add('clk'));
+    document.addEventListener('mouseup',   () => document.body.classList.remove('clk'));
+    (function loop(){ rx+=(mx-rx)*.12; ry+=(my-ry)*.12; cr.style.left=rx+'px'; cr.style.top=ry+'px'; requestAnimationFrame(loop); })();
+    document.querySelectorAll('button,a,.card,.fb').forEach(el => {
+      el.addEventListener('mouseenter', () => document.body.classList.add('hov'));
+      el.addEventListener('mouseleave', () => document.body.classList.remove('hov'));
+    });
+
+    /* ── 3D TILT ── */
+    const cards = Array.from(document.querySelectorAll('.card'));
+    cards.forEach((c,i) => {
+      c.style.animationDelay = i*.05+'s';
+      c.addEventListener('mousemove', e => {
+        const r = c.getBoundingClientRect();
+        const x = (e.clientX-r.left)/r.width-.5;
+        const y = (e.clientY-r.top)/r.height-.5;
+        c.style.transform = `perspective(800px) rotateY(${x*14}deg) rotateX(${-y*10}deg) scale3d(1.03,1.03,1.03)`;
+        c.style.transition = 'box-shadow .4s';
+      });
+      c.addEventListener('mouseleave', () => {
+        c.style.transition = 'transform .55s cubic-bezier(.34,1.56,.64,1), box-shadow .4s';
+        c.style.transform = 'perspective(800px) rotateY(0deg) rotateX(0deg) scale3d(1,1,1)';
+        setTimeout(() => { c.style.transition=''; }, 600);
+      });
+    });
+
+    /* ── FILTERS ── */
+    const cntEl = document.getElementById('cnt');
+    const emptEl = document.getElementById('empt');
+    let vis = [...cards], activeF = 'all';
+
+    document.querySelectorAll('.fb').forEach(btn => {
+      btn.addEventListener('click', () => {
+        activeF = btn.dataset.f;
+        document.querySelectorAll('.fb').forEach(b => b.classList.remove('on'));
+        btn.classList.add('on');
+        vis = [];
+        cards.forEach(c => {
+          const show = activeF==='all' || c.dataset.f===activeF;
+          if (show) {
+            c.classList.remove('off');
+            c.style.animationDelay = vis.length*.05+'s';
+            c.style.animation='none'; void c.offsetWidth; c.style.animation='';
+            vis.push(c);
+          } else { c.classList.add('off'); }
+        });
+        cntEl.textContent = vis.length;
+        emptEl.classList.toggle('show', vis.length===0);
+        buildDots();
+      });
+    });
+
+    /* ── LIGHTBOX ── */
+    const lb    = document.getElementById('lb');
+    const lbImg = document.getElementById('lbImg');
+    const lbT   = document.getElementById('lbT');
+    const lbC   = document.getElementById('lbC');
+    const lbP   = document.getElementById('lbP');
+    const dotsEl= document.getElementById('lbDots');
+    let cur = 0;
+
+    function buildDots() {
+      dotsEl.innerHTML = '';
+      vis.forEach((_,i) => {
+        const d = document.createElement('div');
+        d.className = 'lb-dot' + (i===cur?' a':'');
+        d.addEventListener('click', () => go(i));
+        dotsEl.appendChild(d);
+      });
+    }
+
+    function open(card) {
+      cur = vis.indexOf(card);
+      render(false);
+      lb.classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+    function render(anim) {
+      const c = vis[cur], img = c.querySelector('img');
+      if (anim) {
+        lbImg.classList.add('sw');
+        setTimeout(() => { lbImg.src=img.src; lbImg.alt=img.alt; lbImg.classList.remove('sw'); }, 210);
+      } else { lbImg.src=img.src; lbImg.alt=img.alt; }
+      lbT.textContent = c.dataset.t;
+      lbC.textContent = c.dataset.f[0].toUpperCase()+c.dataset.f.slice(1);
+      lbP.textContent = (cur+1)+' / '+vis.length;
+      document.querySelectorAll('.lb-dot').forEach((d,i) => d.classList.toggle('a', i===cur));
+    }
+    function go(idx) { cur=(idx+vis.length)%vis.length; render(true); }
+    function close() { lb.classList.remove('open'); document.body.style.overflow=''; }
+
+    cards.forEach(c => c.addEventListener('click', () => open(c)));
+    document.getElementById('lbPrev').addEventListener('click', e => { e.stopPropagation(); go(cur-1); });
+    document.getElementById('lbNext').addEventListener('click', e => { e.stopPropagation(); go(cur+1); });
+    document.getElementById('lbX').addEventListener('click', close);
+    document.getElementById('lbBd').addEventListener('click', close);
+
+    /* ── KEYBOARD ── */
+    document.addEventListener('keydown', e => {
+      if (!lb.classList.contains('open')) return;
+      if (e.key==='Escape')     close();
+      if (e.key==='ArrowLeft')  go(cur-1);
+      if (e.key==='ArrowRight') go(cur+1);
+    });
+
+    /* ── SWIPE ── */
+    let tx=0;
+    lb.addEventListener('touchstart', e => { tx=e.touches[0].clientX; }, {passive:true});
+    lb.addEventListener('touchend',   e => { const dx=e.changedTouches[0].clientX-tx; if(Math.abs(dx)>50) dx<0?go(cur+1):go(cur-1); });
+
+    buildDots();
+  })();
+  </script>
+</body>
+</html>
