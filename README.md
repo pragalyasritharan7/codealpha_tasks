@@ -1,63 +1,15 @@
-# Lumina Gallery
+# 🖼️ Interactive Image Gallery Website
 
-A premium, responsive image gallery website built using **HTML, CSS, and JavaScript**. Lumina Gallery features a cinematic dark UI, animated background canvas, custom cursor, category filters, masonry layout, 3D hover effects, and an interactive lightbox preview.
+[![Live Demo](https://img.shields.io/badge/Live_Demo-Visit_Gallery-2ea44f?style=for-the-badge&logo=googlechrome&logoColor=white)](https://pragalyasritharan7.github.io/codealpha_tasks/)
+[![GitHub Pages](https://img.shields.io/badge/Hosted_on-GitHub_Pages-blue?style=for-the-badge&logo=github)](https://pragalyasritharan7.github.io/codealpha_tasks/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-## 🌟 Features
+A modern, responsive animated image gallery website featuring smooth 3D hover effects, category filters, and interactive lightbox previews. Built as part of CodeAlpha internship tasks.
 
-- Responsive masonry image gallery
-- Category-based filtering
-- Interactive lightbox with next/previous navigation
-- Smooth loading animation
-- Animated starfield and aurora background
-- Custom cursor effects
-- 3D card tilt hover animation
-- Mobile-friendly layout
-- Built with pure HTML, CSS, and JavaScript
+🔗 **Live Demo:** [https://pragalyasritharan7.github.io/codealpha_tasks/](https://pragalyasritharan7.github.io/codealpha_tasks/)
 
-## 🛠️ Technologies Used
-
-- HTML5
-- CSS3
-- JavaScript
-- Google Fonts
-- Unsplash image links
-
-## 📁 Project Structure
-
-```text
-lumina-gallery/
-├── index.html
-├── README.md
-├── LICENSE
-└── .gitignore
-```
-
-## 🚀 How to Run
-
-1. Download or clone this repository.
-2. Open `index.html` in any modern web browser.
-3. Explore the gallery and use the filter buttons to view different categories.
-
-## 📌 Project Purpose
-
-This project was created as an image gallery task to practice front-end development concepts such as responsive layouts, DOM manipulation, animations, and user interaction design.
-
-## 🔗 Live Demo
-
-Add your GitHub Pages link here after deployment.
-
-Example:
-
-```text
-https://your-username.github.io/lumina-gallery/
-```
-
-## 👩‍💻 Author
-
-**Pragalya Sritharan**  
-B.Sc. Computer Systems and Design  
-PSG College of Technology
-
-## 📄 License
-
-This project is licensed under the MIT License.
+## ✨ Features
+- 🎨 **Category Filtering:** Filter photos by nature, architecture, and abstract categories instantly.
+- 🔍 **Interactive Lightbox:** Full-screen high-resolution preview with caption overlays.
+- 📱 **Fully Responsive:** Smooth viewing experience across mobile, tablet, and desktop screens.
+- ⚡ **Zero External Dependencies:** Built purely with clean HTML5, CSS3, and modern vanilla JavaScript.
